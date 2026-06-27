@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library — User Portal</title>
+  <style>
+    :root{--accent:#2563eb;--accent-hover:#1d4ed8;--muted:#6b7280;--bg:#f8fafc;--card:#ffffff;--success:#10b981;--danger:#ef4444}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; background:var(--bg); color:#0f172a;overflow-x:hidden}
+    .app{display:flex; min-height:100vh}
+    .mobile-header{display:none;background:linear-gradient(135deg,#1e3a8a 0%, #2563eb 100%);color:#fff;padding:16px 20px;position:sticky;top:0;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+    .mobile-header-content{display:flex;justify-content:space-between;align-items:center}
+    .mobile-brand{font-weight:700;font-size:18px}
+    .hamburger{background:transparent;border:0;color:#fff;font-size:24px;cursor:pointer;padding:8px;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:8px;transition:background 0.2s}
+    .hamburger:active{background:rgba(255,255,255,0.2)}
+    .sidebar{width:280px;background:linear-gradient(180deg,#1e3a8a 0%, #2563eb 100%); color:#fff;padding:24px;display:flex;flex-direction:column;gap:20px;box-shadow:4px 0 12px rgba(0,0,0,0.08);transition:transform 0.3s ease}
+    .brand{font-weight:700; font-size:20px; display:flex;align-items:center;gap:12px}
+    .user-info{background:rgba(255,255,255,0.1);padding:14px;border-radius:10px;font-size:14px}
+    .user-info strong{display:block;font-size:16px;margin-bottom:4px}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{background:transparent;color:rgba(255,255,255,0.95);border:0;padding:12px 14px;border-radius:10px;text-align:left;cursor:pointer;font-size:15px;display:flex;align-items:center;gap:10px;transition:all 0.2s;-webkit-tap-highlight-color:transparent}
+    .nav button:hover{background:rgba(255,255,255,0.12)}
+    .nav button.active{background:rgba(255,255,255,0.18);font-weight:600}
+    .content{flex:1;padding:28px;max-width:1400px}
+    header{margin-bottom:24px}
+    header h2{margin:0 0 6px;font-size:28px}
+    .search-bar{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+    .search-bar input{padding:12px 16px;border-radius:10px;border:1px solid #e2e8f0;flex:1;max-width:500px;font-size:15px}
+    .btn{background:var(--accent);color:#fff;padding:11px 18px;border-radius:10px;border:0;cursor:pointer;font-weight:600;font-size:14px;transition:background 0.2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    .btn:hover{background:var(--accent-hover)}
+    .btn:active{transform:scale(0.98)}
+    .btn-secondary{background:#64748b;color:#fff}
+    .btn-secondary:hover{background:#475569}
+    .btn-success{background:var(--success)}
+    .btn-success:hover{background:#059669}
+    .btn-danger{background:var(--danger)}
+    .btn-danger:hover{background:#dc2626}
+    .btn-outline{background:transparent;border:1px solid #cbd5e1;color:#475569}
+    .btn-outline:hover{background:#f1f5f9}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+    @media (max-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:768px){
+      .mobile-header{display:block}
+      .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:1000;transform:translateX(-100%);width:280px}
+      .sidebar.open{transform:translateX(0)}
+      .content{padding:16px;padding-top:0}
+      .grid{grid-template-columns:1fr;gap:12px}
+      header h2{font-size:24px}
+      .search-bar{flex-direction:column;align-items:stretch}
+      .search-bar input{max-width:100%}
+      .filter-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;padding-bottom:8px}
+      .filter-tabs::-webkit-scrollbar{height:4px}
+      .filter-tabs::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+    }
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999}
+    .sidebar-overlay.show{display:block}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.06);border:1px solid #f1f5f9}
+    .stat-card{text-align:center;padding:20px}
+    .stat-card .label{color:var(--muted);font-size:14px;margin-bottom:8px}
+    .stat-card .value{font-size:32px;font-weight:700;color:var(--accent)}
+    .book-card{transition:transform 0.2s, box-shadow 0.2s}
+    .book-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,0.12)}
+    .book-card h4{margin:0 0 8px;font-size:16px;color:#0f172a}
+    .book-card .author{color:var(--muted);font-size:14px;margin-bottom:8px}
+    .book-card .isbn{color:#94a3b8;font-size:13px;margin-bottom:10px}
+    .book-card .desc{font-size:14px;color:#475569;margin:10px 0;line-height:1.5}
+    .badge{display:inline-block;padding:6px 12px;border-radius:20px;font-weight:600;font-size:12px}
+    .badge-success{background:#d1fae5;color:#065f46}
+    .badge-warning{background:#fef3c7;color:#92400e}
+    .badge-danger{background:#fee2e2;color:#991b1b}
+    .badge-info{background:#dbeafe;color:#1e40af}
+    .actions{display:flex;gap:8px;margin-top:12px}
+    .actions button{flex:1;padding:8px;font-size:13px}
+    table{width:100%;border-collapse:collapse;margin-top:16px;overflow-x:auto;display:block}
+    @media (max-width:768px){
+      table{font-size:13px}
+      th,td{padding:10px 8px}
+    }
+    th,td{padding:12px;border-bottom:1px solid #f1f5f9;text-align:left}
+    th{background:#f8fafc;font-weight:600;color:#475569;font-size:14px}
+    td{font-size:14px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+    .modal{width:600px;max-width:92%;background:#fff;border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+    @media (max-width:768px){
+      .modal{padding:20px;max-width:95%;border-radius:12px}
+      .modal h3{font-size:20px}
+      .stat-card .value{font-size:28px}
+      .card{padding:14px}
+      .book-card:hover{transform:none}
+    }
+    .modal h3{margin:0 0 18px;font-size:22px}
+    .form-group{margin-bottom:16px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;font-size:14px;color:#374151}
+    .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #d1d5db;font-size:14px}
+    .form-group textarea{resize:vertical;font-family:inherit}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+    .muted{color:var(--muted);font-size:14px}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+    .empty-state .icon{font-size:64px;margin-bottom:16px;opacity:0.5}
+    footer{margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;color:var(--muted);font-size:13px;text-align:center}
+    .filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+    .filter-tabs button{padding:8px 16px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:14px;transition:all 0.2s}
+    .filter-tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .logout-btn{margin-top:auto;padding:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;cursor:pointer;font-size:14px}
+    .logout-btn:hover{background:rgba(255,255,255,0.15)}
+    .request-item{padding:14px;background:#f8fafc;border-radius:8px;margin-bottom:12px;border-left:3px solid var(--accent)}
+    .sync-toast{position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:12px 20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;align-items:center;gap:10px;z-index:2000;animation:slideIn 0.3s ease}
+    @media (max-width:768px){
+      .sync-toast{bottom:80px;right:16px;left:16px;justify-content:center;font-size:14px}
+    }
+    @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+  </style>
+</head>
+<body>
+  <div class="mobile-header">
+    <div class="mobile-header-content">
+      <div class="mobile-brand">📚 My Library</div>
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+    </div>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">📚 My Library</div>
+      <div class="user-info">
+        <strong id="userName">Guest User</strong>
+        <div class="muted" id="userEmail">user@example.com</div>
+      </div>
+      <nav class="nav" role="navigation">
+        <button class="active" data-view="browse">🔍 Browse Books</button>
+        <button data-view="myborrowed">📚 My Borrowed</button>
+        <button data-view="history">🕓 History</button>
+        <button data-view="profile">👤 Profile</button>
+        <button data-view="request">💬 Request Book</button>
+      </nav>
+      <button class="logout-btn" id="logoutBtn">🚪 Logout</button>
+    </aside>
+
+    <main class="content">
+      <div id="browseView">
+        <header>
+          <h2>Browse Books</h2>
+          <div class="muted">Discover and borrow books from our collection</div>
+        </header>
+        <div class="search-bar">
+          <input id="searchInput" placeholder="Search by title, author, or ISBN..." />
+          <button class="btn" id="searchBtn">Search</button>
+        </div>
+        <div class="filter-tabs">
+          <button class="active" data-filter="all">All Books</button>
+          <button data-filter="available">Available Only</button>
+          <button data-filter="borrowed">Currently Borrowed</button>
+        </div>
+        <div class="grid" id="booksGrid"></div>
+      </div>
+
+      <div id="myborrowedView" style="display:none">
+        <header>
+          <h2>My Borrowed Books</h2>
+          <div class="muted">Books you currently have borrowed</div>
+        </header>
+        <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="card stat-card">
+            <div class="label">Currently Borrowed</div>
+            <div class="value" id="statCurrentBorrowed">0</div>
+          </div>
+          <div class="card stat-card">
+            <div class="label">Total Borrowed</div>
+            <div class="value" id="statTotalBorrowed">0</div>
+          </div>
+          <div class="card stat-card">
+            <div class="label">Books Returned</div>
+            <div class="value" id="statReturned">0</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <h3 style="margin-top:0">Active Loans</h3>
+          <div id="borrowedBooksContainer"></div>
+        </div>
+      </div>
+
+      <div id="historyView" style="display:none">
+        <header>
+          <h2>Borrowing History</h2>
+          <div class="muted">Complete record of your library activity</div>
+        </header>
+        <div class="card">
+          <table id="historyTable">
+            <thead>
+              <tr><th>Book Title</th><th>Author</th><th>Borrowed Date</th><th>Returned Date</th><th>Status</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="profileView" style="display:none">
+        <header>
+          <h2>My Profile</h2>
+          <div class="muted">Manage your account information</div>
+        </header>
+        <div class="card" style="max-width:600px">
+          <h3 style="margin-top:0">Personal Information</h3>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input id="profileName" type="text" placeholder="Your name" />
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input id="profileEmail" type="email" placeholder="your.email@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input id="profilePhone" type="tel" placeholder="+91 98765 43210" />
+          </div>
+          <div class="form-group">
+            <label>Member Since</label>
+            <input id="profileMemberSince" type="text" readonly style="background:#f8fafc" />
+          </div>
+          <button class="btn" id="saveProfileBtn">Save Changes</button>
+        </div>
+      </div>
+
+      <div id="requestView" style="display:none">
+        <header>
+          <h2>Request a Book</h2>
+          <div class="muted">Suggest books you'd like to see in our library</div>
+        </header>
+        <div class="card" style="max-width:700px">
+          <h3 style="margin-top:0">Book Request Form</h3>
+          <div class="form-group">
+            <label>Book Title *</label>
+            <input id="reqTitle" type="text" placeholder="Enter book title" />
+          </div>
+          <div class="form-group">
+            <label>Author *</label>
+            <input id="reqAuthor" type="text" placeholder="Author name" />
+          </div>
+          <div class="form-group">
+            <label>ISBN (Optional)</label>
+            <input id="reqIsbn" type="text" placeholder="ISBN number" />
+          </div>
+          <div class="form-group">
+            <label>Why do you want this book?</label>
+            <textarea id="reqReason" rows="4" placeholder="Tell us why this book would be a great addition..."></textarea>
+          </div>
+          <button class="btn" id="submitRequestBtn">Submit Request</button>
+        </div>
+        <div class="card" style="margin-top:24px;max-width:700px">
+          <h3 style="margin-top:0">Your Requests</h3>
+          <div id="requestsContainer"></div>
+        </div>
+      </div>
+
+      <footer>Library User Portal • Built with HTML/CSS/JS • Data stored locally</footer>
+    </main>
+  </div>
+
+  <div id="borrowModal" style="display:none" class="modal-backdrop">
+    <div class="modal">
+      <h3>Confirm Borrow</h3>
+      <p>Are you sure you want to borrow this book?</p>
+      <div id="borrowBookDetails" style="background:#f8fafc;padding:12px;border-radius:8px;margin:16px 0"></div>
+      <div class="modal-actions">
+        <button class="btn-outline btn" id="cancelBorrowBtn">Cancel</button>
+        <button class="btn btn-success" id="confirmBorrowBtn">Confirm Borrow</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="syncToast" class="sync-toast">
+    <span>✓</span>
+    <span>Synced with admin updates</span>
+  </div>
+
+  <script src="user.js"></script>
+</body>
+</html>

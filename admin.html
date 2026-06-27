@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library Management — Frontend</title>
+  <style>
+    :root{--accent:#2b6cb0;--muted:#6b7280;--bg:#f7fafc;--card:#ffffff}
+    *{box-sizing:border-box}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; background:var(--bg); color:#0f172a}
+    .app{display:flex; min-height:100vh}
+    .sidebar{width:260px;background:linear-gradient(180deg,#083344 0%, #0b6b91 100%); color:#fff;padding:20px;display:flex;flex-direction:column;gap:18px}
+    .brand{font-weight:700; font-size:18px; display:flex;align-items:center;gap:10px}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{background:transparent;color:rgba(255,255,255,0.95);border:0;padding:10px;border-radius:8px;text-align:left;cursor:pointer}
+    .nav button.active{background:rgba(255,255,255,0.08)}
+    .content{flex:1;padding:20px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .search{display:flex;gap:12px;align-items:center}
+    .search input{padding:10px 12px;border-radius:8px;border:1px solid #e6eef6;min-width:280px}
+    .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.sidebar{display:none}}
+    @media (max-width:600px){.grid{grid-template-columns:1fr}.search input{min-width:140px}}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left}
+    .actions button{margin-right:6px}
+    /* Book cards */
+    .books{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media (max-width:1100px){.books{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:800px){.books{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:500px){.books{grid-template-columns:1fr}}
+    .book{padding:12px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff);box-shadow:0 6px 20px rgba(3,7,18,0.04)}
+    .book h4{margin:6px 0 4px}
+    .muted{color:var(--muted);font-size:13px}
+    /* modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:flex;align-items:center;justify-content:center}
+    .modal{width:720px;max-width:95%;background:#fff;border-radius:12px;padding:18px}
+    .form-row{display:flex;gap:10px}
+    .form-row > *{flex:1}
+    .small{width:120px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef6ff;font-weight:600;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">📚 My Library</div>
+      <div class="muted">Manage books, users & loans</div>
+      <nav class="nav" role="navigation">
+        <button class="active" data-view="dashboard">Dashboard</button>
+        <button data-view="books">Books</button>
+        <button data-view="users">Users</button>
+        <button data-view="loans">Loans</button>
+        <button data-view="settings">Settings</button>
+      </nav>
+      <div style="margin-top:auto; font-size:13px">
+        Logged in as <strong>Admin</strong>
+        <button id="adminLogout" style="margin-top:10px;width:100%;padding:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;cursor:pointer">🚪 Logout</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header>
+        <div>
+          <h2 style="margin:0">Library Dashboard</h2>
+          <div class="muted">Quick overview</div>
+        </div>
+        <div class="search">
+          <input id="globalSearch" placeholder="Search by title, author, ISBN..." />
+          <button class="btn" id="openAdd">+ Add book</button>
+        </div>
+      </header>
+
+      <section class="grid" aria-label="summary-cards">
+        <div class="card">
+          <div class="muted">Total books</div>
+          <div style="font-size:22px;font-weight:700" id="statTotal">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">Borrowed</div>
+          <div style="font-size:22px;font-weight:700" id="statBorrowed">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">Active users</div>
+          <div style="font-size:22px;font-weight:700" id="statUsers">0</div>
+        </div>
+      </section>
+
+      <section class="card" id="mainArea">
+        <!-- content injected by JS -->
+        <div id="booksView"></div>
+        <div id="usersView" style="display:none"></div>
+        <div id="loansView" style="display:none"></div>
+        <div id="settingsView" style="display:none">
+          <h3>Settings</h3>
+          <p class="muted">You can integrate with a backend here. See comments in the code for Firebase hints.</p>
+          <button id="exportJson" class="btn">Export data</button>
+          <input type="file" id="importFile" style="display:none" />
+          <button id="importBtn" style="margin-left:8px">Import data</button>
+        </div>
+      </section>
+
+      <footer>Built with plain HTML/CSS/JS • Demo data stored in <code>localStorage</code></footer>
+    </main>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="modal" style="display:none" class="modal-backdrop">
+    <div class="modal">
+      <h3 id="modalTitle">Add Book</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="title" placeholder="Title" />
+        <div class="form-row">
+          <input id="author" placeholder="Author" />
+          <input id="isbn" placeholder="ISBN" />
+          <input id="copies" placeholder="Copies" class="small" />
+        </div>
+        <textarea id="desc" placeholder="Short description" rows="3"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button id="closeModal">Cancel</button>
+          <button id="saveBook" class="btn">Save book</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check admin authentication
+    if(localStorage.getItem('lms_admin_logged_in') !== 'true'){
+      window.location.href = 'admin-login.html';
+    }
+
+    // Simple frontend-only Library Management (no backend). Uses localStorage for persistence.
+    // Features: add/edit/delete books, search, borrow/return, export/import JSON, user demo list.
+    // Integration note: to connect to Firebase or another backend, replace localStorage operations with
+    // firebase.firestore() calls (or realtime-db) and add authentication. See Firebase docs.
+
+    // --- sample demo data ---
+    const demoBooks = [
+      {id: id(), title: 'Clean Code', author: 'Robert C. Martin', isbn: '9780132350884', copies: 4, desc: 'A Handbook of Agile Software Craftsmanship', borrowed:0},
+      {id: id(), title: 'You Don\'t Know JS', author: 'Kyle Simpson', isbn: '9781491904244', copies: 2, desc: 'Deep dive into JS', borrowed:1},
+      {id: id(), title: 'Eloquent JavaScript', author: 'Marijn Haverbeke', isbn: '9781593279509', copies: 3, desc: 'A Modern Introduction to Programming', borrowed:0},
+    ];
+
+    const demoUsers = [
+      {id:id(), name:'Alice Sharma', email:'alice@example.com', active:true},
+      {id:id(), name:'Rahul Verma', email:'rahul@example.com', active:true}
+    ];
+
+    // --- state management ---
+    let state = {
+      books: load('lms_books') || demoBooks,
+      users: load('lms_users') || demoUsers,
+    };
+
+    // --- helpers ---
+    function id(){return 'id_'+Math.random().toString(36).slice(2,9)}
+    function save(key, val){localStorage.setItem(key, JSON.stringify(val))}
+    function load(key){try{return JSON.parse(localStorage.getItem(key))}catch(e){return null}}
+
+    // --- DOM refs ---
+    const navButtons = document.querySelectorAll('.nav button')
+    const views = {booksView:document.getElementById('booksView'), usersView:document.getElementById('usersView'), loansView:document.getElementById('loansView')}
+    const globalSearch = document.getElementById('globalSearch')
+    const statTotal = document.getElementById('statTotal')
+    const statBorrowed = document.getElementById('statBorrowed')
+    const statUsers = document.getElementById('statUsers')
+    const modal = document.getElementById('modal')
+    const openAdd = document.getElementById('openAdd')
+    const closeModal = document.getElementById('closeModal')
+    const saveBook = document.getElementById('saveBook')
+    const modalTitle = document.getElementById('modalTitle')
+    const titleIn = document.getElementById('title')
+    const authorIn = document.getElementById('author')
+    const isbnIn = document.getElementById('isbn')
+    const copiesIn = document.getElementById('copies')
+    const descIn = document.getElementById('desc')
+    const exportJson = document.getElementById('exportJson')
+    const importBtn = document.getElementById('importBtn')
+    const importFile = document.getElementById('importFile')
+
+    let editId = null
+
+    // --- init ---
+    render()
+    attachListeners()
+
+    function attachListeners(){
+      navButtons.forEach(b=>b.addEventListener('click', ()=>{navButtons.forEach(x=>x.classList.remove('active')); b.classList.add('active'); showView(b.dataset.view)}))
+      openAdd.addEventListener('click', ()=>openModal())
+      closeModal.addEventListener('click', ()=>closeModalFn())
+      saveBook.addEventListener('click', ()=>saveBookFn())
+      globalSearch.addEventListener('input', ()=>renderBooks(globalSearch.value))
+      exportJson.addEventListener('click', ()=>download(JSON.stringify(state), 'library-data.json'))
+      importBtn.addEventListener('click', ()=>importFile.click())
+      importFile.addEventListener('change', handleImport)
+      document.getElementById('adminLogout').addEventListener('click', adminLogout)
+    }
+
+    function adminLogout(){
+      if(confirm('Are you sure you want to logout?')){
+        localStorage.removeItem('lms_admin_logged_in');
+        localStorage.removeItem('lms_admin_session');
+        window.location.href = 'admin-login.html';
+      }
+    }
+
+    function handleImport(e){
+      const f = e.target.files[0]; if(!f) return; const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const parsed = JSON.parse(reader.result);
+          if(parsed.books) state.books = parsed.books;
+          if(parsed.users) state.users = parsed.users;
+          save('lms_books', state.books); save('lms_users', state.users);
+          render();
+          alert('Import successful')
+        }catch(err){alert('Invalid file')}
+      }
+      reader.readAsText(f)
+    }
+
+    function showView(view){
+      // view names: dashboard|books|users|loans|settings
+      if(view==='dashboard'){
+        document.getElementById('booksView').style.display='block'
+        document.getElementById('usersView').style.display='none'
+        document.getElementById('loansView').style.display='none'
+        document.getElementById('settingsView').style.display='none'
+      }else if(view==='books'){
+        document.getElementById('booksView').style.display='block'
+        document.getElementById('usersView').style.display='none'
+        document.getElementById('loansView').style.display='none'
+        document.getElementById('settingsView').style.display='none'
+      }else if(view==='users'){
+        document.getElementById('booksView').style.display='none'
+        document.getElementById('usersView').style.display='block'
+        document.getElementById('loansView').style.display='none'
+        document.getElementById('settingsView').style.display='none'
+      }else if(view==='loans'){
+        document.getElementById('booksView').style.display='none'
+        document.getElementById('usersView').style.display='none'
+        document.getElementById('loansView').style.display='block'
+        document.getElementById('settingsView').style.display='none'
+        renderLoans()
+      }else{
+        document.getElementById('booksView').style.display='none'
+        document.getElementById('usersView').style.display='none'
+        document.getElementById('loansView').style.display='none'
+        document.getElementById('settingsView').style.display='block'
+      }
+    }
+
+    // --- render functions ---
+    function render(){
+      renderStats(); renderBooks(); renderUsers(); renderLoans();
+    }
+
+    function renderStats(){
+      statTotal.textContent = state.books.reduce((s,b)=>s+b.copies,0)
+      statBorrowed.textContent = state.books.reduce((s,b)=>s+b.borrowed,0)
+      statUsers.textContent = state.users.length
+    }
+
+    function renderBooks(filter=''){
+      const container = views.booksView
+      const q = filter.trim().toLowerCase()
+      const books = state.books.filter(b=>!q || (b.title+b.author+b.isbn).toLowerCase().includes(q))
+
+      container.innerHTML = `
+        <h3>Books</h3>
+        <div class="books" id="booksGrid"></div>
+        <hr style="margin:12px 0" />
+        <h4>All books (table)</h4>
+        <table>
+          <thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th>Copies</th><th>Borrowed</th><th>Actions</th></tr></thead>
+          <tbody id="booksTable"></tbody>
+        </table>`;
+
+      const grid = document.getElementById('booksGrid')
+      grid.innerHTML = books.map(b=>`
+        <div class="book">
+          <div style="display:flex;justify-content:space-between;align-items:center"><h4>${escapeHtml(b.title)}</h4><div class="pill">${b.copies - (b.borrowed||0)} available</div></div>
+          <div class="muted">${escapeHtml(b.author)} • ISBN ${escapeHtml(b.isbn)}</div>
+          <p style="margin:8px 0">${escapeHtml(b.desc)}</p>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button data-id="${b.id}" class="btn borrow">Borrow</button>
+            <button data-id="${b.id}" class="btn" style="background:#94a3b8">Return</button>
+            <button data-id="${b.id}" class="" style="background:transparent;border:1px solid #e2e8f0;padding:8px;border-radius:8px">Edit</button>
+          </div>
+        </div>
+      `).join('')
+
+      // table rows
+      const tbody = document.getElementById('booksTable')
+      tbody.innerHTML = books.map(b=>`<tr>
+        <td>${escapeHtml(b.title)}</td>
+        <td>${escapeHtml(b.author)}</td>
+        <td>${escapeHtml(b.isbn)}</td>
+        <td>${b.copies}</td>
+        <td>${b.borrowed||0}</td>
+        <td class="actions">
+          <button data-id="${b.id}" class="borrow">Borrow</button>
+          <button data-id="${b.id}" class="return">Return</button>
+          <button data-id="${b.id}" class="edit">Edit</button>
+          <button data-id="${b.id}" class="delete" style="color:#b91c1c">Delete</button>
+        </td>
+      </tr>`).join('')
+
+      // attach events
+      grid.querySelectorAll('.borrow').forEach(b=>b.addEventListener('click', (e)=>{borrowBook(e.target.dataset.id)}))
+      grid.querySelectorAll('button[style]').forEach(b=>{ if(b.textContent==='Edit') b.addEventListener('click', (e)=>openModal(e.target.dataset.id)) })
+      tbody.querySelectorAll('.borrow').forEach(b=>b.addEventListener('click', (e)=>borrowBook(e.target.dataset.id)))
+      tbody.querySelectorAll('.return').forEach(b=>b.addEventListener('click', (e)=>returnBook(e.target.dataset.id)))
+      tbody.querySelectorAll('.edit').forEach(b=>b.addEventListener('click', (e)=>openModal(e.target.dataset.id)))
+      tbody.querySelectorAll('.delete').forEach(b=>b.addEventListener('click', (e)=>deleteBook(e.target.dataset.id)))
+    }
+
+    function renderUsers(){
+      const container = views.usersView
+      container.innerHTML = `<h3>Users</h3>
+      <table><thead><tr><th>Name</th><th>Email</th><th>Active</th></tr></thead><tbody>${state.users.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${u.active? 'Yes':'No'}</td></tr>`).join('')}</tbody></table>`
+    }
+
+    function renderLoans(){
+      const container = views.loansView
+      const loans = []
+      state.books.forEach(b=>{
+        if(b.borrowed && b.borrowed>0) loans.push({book:b.title,count:b.borrowed})
+      })
+      container.innerHTML = `<h3>Active Loans</h3>${loans.length? '<ul>'+loans.map(l=>`<li>${escapeHtml(l.book)} — ${l.count} copy(s)</li>`).join('')+'</ul>' : '<p class="muted">No active loans</p>'}`
+    }
+
+    // --- actions ---
+    function openModal(bookId){
+      editId = null
+      modal.style.display='flex'
+      if(bookId){
+        const b = state.books.find(x=>x.id===bookId)
+        if(!b) return
+        modalTitle.textContent = 'Edit Book'
+        titleIn.value = b.title; authorIn.value = b.author; isbnIn.value = b.isbn; copiesIn.value = b.copies; descIn.value = b.desc || '';
+        editId = b.id
+      }else{
+        modalTitle.textContent = 'Add Book'
+        titleIn.value=''; authorIn.value=''; isbnIn.value=''; copiesIn.value=1; descIn.value=''
+      }
+    }
+    function closeModalFn(){ modal.style.display='none' }
+
+    function saveBookFn(){
+      const title=titleIn.value.trim(); const author=authorIn.value.trim(); const isbn=isbnIn.value.trim(); const copies=Number(copiesIn.value)||1; const desc=descIn.value.trim();
+      if(!title||!author){ alert('Title and author required'); return }
+      if(editId){
+        const b = state.books.find(x=>x.id===editId); b.title=title; b.author=author; b.isbn=isbn; b.copies=copies; b.desc=desc
+      }else{
+        state.books.push({id:id(), title, author, isbn, copies, desc, borrowed:0})
+      }
+      save('lms_books', state.books)
+      closeModalFn(); render();
+    }
+
+    function borrowBook(bookId){
+      const b = state.books.find(x=>x.id===bookId)
+      if(!b) return; if((b.borrowed||0) >= b.copies){ alert('No copies available'); return }
+      b.borrowed = (b.borrowed||0)+1; save('lms_books', state.books); render();
+    }
+    function returnBook(bookId){
+      const b = state.books.find(x=>x.id===bookId)
+      if(!b) return; if((b.borrowed||0)<=0){ alert('No borrowed copies'); return }
+      b.borrowed = (b.borrowed||0)-1; save('lms_books', state.books); render();
+    }
+    function deleteBook(bookId){
+      if(!confirm('Delete this book?')) return
+      state.books = state.books.filter(b=>b.id!==bookId); save('lms_books', state.books); render();
+    }
+
+    // util: escape
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c] }) }
+
+    function download(text, filename){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=filename; a.click(); URL.revokeObjectURL(a.href) }
+
+    // initial render call already done above
+  </script>
+</body>
+</html>
